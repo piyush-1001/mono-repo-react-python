@@ -1,4 +1,5 @@
-def find_number(numbers, target) -> int | None:
+def find_number(numbers: list[int], target: int) -> int | None:
+    """Return the index of target in numbers, or None if absent."""
     return numbers.index(target) if target in numbers else None
 
 
