@@ -1,3 +1,6 @@
+"""Number lookup utilities."""
+
+
 def find_number(numbers: list[int], target: int) -> int | None:
     """Return the index of target in numbers, or None when target is absent.
 
@@ -14,9 +17,18 @@ def find_number(numbers: list[int], target: int) -> int | None:
         return None
 
 
-numbers = [10, 20, 30]
-target = 50
+def main() -> None:
+    """Run the demo lookup and print the result."""
+    numbers = [10, 20, 30]
+    target = 50
 
-index = find_number(numbers, target)
+    index = find_number(numbers, target)
 
-print(index)
+    if index is None:
+        print(f"{target} not found in {numbers}")
+    else:
+        print(f"{target} found at index {index}")
+
+
+if __name__ == "__main__":
+    main()
