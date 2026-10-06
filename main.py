@@ -4,12 +4,13 @@ def calculate_average(total, count):
     return total / count
 
 
-total = 100
-count = 0
+if __name__ == "__main__":
+    total = 100
+    count = 0
 
-average = calculate_average(total, count)
+    average = calculate_average(total, count)
 
-print(f"Average: {average}")
+    print(f"Average: {average}")
 
 # percentage_error.py
 
@@ -18,10 +19,11 @@ def calculate_percentage(completed, total):
     return percentage
 
 
-completed_tasks = 25
-total_tasks = 0
+if __name__ == "__main__":
+    completed_tasks = 25
+    total_tasks = 0
 
-percentage = calculate_percentage(completed_tasks, total_tasks)
+    percentage = calculate_percentage(completed_tasks, total_tasks)
 
-print(f"Completion: {percentage}%")
+    print(f"Completion: {percentage}%")
 

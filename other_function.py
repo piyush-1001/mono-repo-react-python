@@ -7,14 +7,15 @@ def calculate_hourly_salary(monthly_salary, working_days, hours_per_day):
     return hourly_salary
 
 
-monthly_salary = 50000
-working_days = 0
-hours_per_day = 8
+if __name__ == "__main__":
+    monthly_salary = 50000
+    working_days = 0
+    hours_per_day = 8
 
-salary_per_hour = calculate_hourly_salary(
-    monthly_salary,
-    working_days,
-    hours_per_day,
-)
+    salary_per_hour = calculate_hourly_salary(
+        monthly_salary,
+        working_days,
+        hours_per_day,
+    )
 
-print(f"Hourly Salary: ₹{salary_per_hour}")
+    print(f"Hourly Salary: ₹{salary_per_hour}")
