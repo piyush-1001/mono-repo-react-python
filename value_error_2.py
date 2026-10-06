@@ -1,6 +1,5 @@
-def find_number(numbers, target):
-    index = numbers.index(target)
-    return index
+def find_number(numbers, target) -> int | None:
+    return numbers.index(target) if target in numbers else None
 
 
 numbers = [10, 20, 30]
