@@ -1,3 +1,5 @@
+"""Number search utilities for locating a target value's index."""
+
 import logging
 
 logger = logging.getLogger(__name__)
