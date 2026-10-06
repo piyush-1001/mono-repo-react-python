@@ -17,4 +17,7 @@ if __name__ == "__main__":
 
     index = find_number(numbers, target)
 
-    print(index)
+    if index is None:
+        print(f"{target} not found in {numbers}")
+    else:
+        print(f"{target} found at index {index}")
