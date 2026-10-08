@@ -1,11 +1,17 @@
-def find_number(numbers, target):
-    index = numbers.index(target)
-    return index
+"""Number search utilities."""
 
 
-numbers = [10, 20, 30]
-target = 50
+def find_number(numbers: list[int], target: int) -> int | None:
+    try:
+        return numbers.index(target)
+    except ValueError:
+        return None
 
-index = find_number(numbers, target)
 
-print(index)
+def main() -> None:
+    """Run demo lookup."""
+    print(find_number([10, 20, 30], 50))
+
+
+if __name__ == "__main__":
+    main()
