@@ -7,6 +7,7 @@ function divide(num, divisor) {
     return result;
   } catch (error) {
     console.error("Error caught:", error.message);
+    return undefined;
   } finally {
     console.log("Execution finished.");
   }
