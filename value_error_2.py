@@ -1,6 +1,8 @@
 def find_number(numbers, target):
-    index = numbers.index(target)
-    return index
+    try:
+        return numbers.index(target)
+    except ValueError:
+        return None
 
 
 if __name__ == "__main__":
