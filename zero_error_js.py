@@ -1,18 +1,25 @@
-function divide(num, divisor) {
-  try {
-    if (divisor === 0) {
-      throw new Error("Cannot divide by zero"); // Throws exception for 0
-    }
-    const result = num / divisor;
-    return result;
-  } catch (error) {
-    console.error("Error caught:", error.message);
-  } finally {
-    console.log("Execution finished.");
-  }
-}
+def divide(num: float, divisor: float) -> float | None:
+    """Divide two numbers.
 
-// Test the function
-console.log(divide(10, 2);  // Output: 5
-divide(10, 0);              // Output: Error caught: Cannot divide by zero
+    Args:
+        num: The numerator.
+        divisor: The divisor.
 
+    Returns:
+        The result of division, or None if divisor is zero.
+    """
+    try:
+        if divisor == 0:
+            raise ValueError("Cannot divide by zero")
+        result = num / divisor
+        return result
+    except ValueError as error:
+        print(f"Error caught: {error}")
+        return None
+    finally:
+        print("Execution finished.")
+
+
+# Test the function
+print(divide(10, 2))  # Output: 5.0
+print(divide(10, 0))  # Output: Error caught: Cannot divide by zero, None
