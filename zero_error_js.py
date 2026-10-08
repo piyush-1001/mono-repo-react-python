@@ -1,4 +1,7 @@
-def divide(num: float, divisor: float) -> float | None:
+from typing import Optional
+
+
+def divide(num: float, divisor: float) -> Optional[float]:
     """Divide two numbers.
 
     Args:

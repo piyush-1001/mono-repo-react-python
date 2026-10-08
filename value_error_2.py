@@ -1,14 +1,4 @@
-class NumberNotFoundError(Exception):
-    """Raised when the target number is not found in the list."""
-
-    def __init__(self, target: int) -> None:
-        """Initialize the exception.
-
-        Args:
-            target: The number that was not found.
-        """
-        self.target = target
-        super().__init__(f"Number {target} not found in list")
+from exceptions import NumberNotFoundError
 
 
 def find_number(numbers: list[int], target: int) -> int:
@@ -24,10 +14,10 @@ def find_number(numbers: list[int], target: int) -> int:
     Raises:
         NumberNotFoundError: If target is not in the list.
     """
-    if target not in numbers:
+    try:
+        return numbers.index(target)
+    except ValueError:
         raise NumberNotFoundError(target)
-    index = numbers.index(target)
-    return index
 
 
 numbers = [10, 20, 30]
