@@ -1,4 +1,7 @@
-def find_number(numbers, target):
+"""Number search utilities."""
+
+
+def find_number(numbers: list[int], target: int) -> int | None:
     try:
         return numbers.index(target)
     except ValueError:
