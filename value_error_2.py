@@ -24,10 +24,10 @@ def find_number(numbers: list[int], target: int) -> int:
     Raises:
         NumberNotFoundError: If target is not in the list.
     """
-    if target not in numbers:
+    try:
+        return numbers.index(target)
+    except ValueError:
         raise NumberNotFoundError(target)
-    index = numbers.index(target)
-    return index
 
 
 numbers = [10, 20, 30]
