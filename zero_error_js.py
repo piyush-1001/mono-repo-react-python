@@ -7,12 +7,13 @@ function divide(num, divisor) {
     return result;
   } catch (error) {
     console.error("Error caught:", error.message);
+    return null;
   } finally {
     console.log("Execution finished.");
   }
 }
 
 // Test the function
-console.log(divide(10, 2);  // Output: 5
-divide(10, 0);              // Output: Error caught: Cannot divide by zero
+console.log(divide(10, 2));  // Output: 5
+divide(10, 0);               // Output: Error caught: Cannot divide by zero
 
