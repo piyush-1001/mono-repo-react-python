@@ -35,7 +35,7 @@ body {
 }
 
 .card {
-  width: min(100%, 620px);
+  width: min(100%, 560px);
   background: rgba(15, 23, 42, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 20px;
@@ -124,33 +124,4 @@ button:disabled {
 .response-box p {
   margin: 0;
   color: #dbeafe;
-}
-
-.analysis-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.analysis-grid > div {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.label {
-  font-size: 12px;
-  color: #93c5fd;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.analysis-grid strong {
-  font-size: 14px;
-  color: #f8fafc;
 }
