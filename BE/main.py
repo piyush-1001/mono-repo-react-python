@@ -1,22 +1,40 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from collections import Counter
 import re
+import os
 
 app = FastAPI(title="AI/ML Smart App API")
 
+# Configure allowed origins from environment variable or use specific defaults
+ALLOWED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
+# Pre-compiled regex patterns for entity extraction
+_RE_CAPITALIZED = re.compile(r'\b[A-Z][a-z]+\b')
+_RE_NUMBERS = re.compile(r'\b\d+\.?\d*\b')
+# Email regex supports: standard emails, + addressing, dots, hyphens in local and domain parts
+_RE_EMAILS = re.compile(r'\b[\w.+-]+@[\w.-]+\.\w{2,}\b')
+_RE_URLS = re.compile(r'https?://\S+')
+_RE_SENTENCE_SPLIT = re.compile(r'[.!?]+')
+
+# Maximum input text length to prevent ReDoS and memory exhaustion
+MAX_TEXT_LENGTH = 10000
+
 
 class MessageRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=10000)
 
 
 # ============== Sentiment Analysis ==============
@@ -79,12 +97,19 @@ def classify_text(text: str):
         score = sum(1 for word in words if word in keywords)
         scores[category] = score
 
-    top_category = max(scores, key=scores.get) if max(scores.values()) > 0 else "general"
+    max_score = max(scores.values()) if scores else 0
+    top_category = max(scores, key=scores.get) if max_score > 0 else "general"
+
+    # When no category matches, use 'general' with 0 confidence
+    if top_category == "general":
+        confidence = 0
+    else:
+        confidence = round(scores.get(top_category, 0) / max(len(words), 1) * 100, 1)
 
     return {
         "category": top_category,
         "scores": scores,
-        "confidence": round(scores[top_category] / max(len(words), 1) * 100, 1) if scores[top_category] > 0 else 0
+        "confidence": confidence
     }
 
 
@@ -92,16 +117,16 @@ def classify_text(text: str):
 def extract_entities(text: str):
     """Simple rule-based entity extraction"""
     # Capitalized words (potential proper nouns)
-    capitalized = re.findall(r'\b[A-Z][a-z]+\b', text)
+    capitalized = _RE_CAPITALIZED.findall(text)
 
     # Numbers
-    numbers = re.findall(r'\b\d+\.?\d*\b', text)
+    numbers = _RE_NUMBERS.findall(text)
 
     # Emails
-    emails = re.findall(r'\b[\w.-]+@[\w.-]+\.\w+\b', text)
+    emails = _RE_EMAILS.findall(text)
 
     # URLs
-    urls = re.findall(r'https?://\S+', text)
+    urls = _RE_URLS.findall(text)
 
     # Capitalized sequences (names, places)
     proper_nouns = [w for w in capitalized if len(w) > 2][:10]
@@ -119,7 +144,7 @@ def extract_entities(text: str):
 def analyze_text_stats(text: str):
     """Calculate various text statistics"""
     words = text.split()
-    sentences = re.split(r'[.!?]+', text)
+    sentences = _RE_SENTENCE_SPLIT.split(text)
     sentences = [s.strip() for s in sentences if s.strip()]
 
     char_count = len(text)
@@ -146,7 +171,7 @@ def analyze_text_stats(text: str):
 # ============== Text Summarization (Simple) ==============
 def summarize_text(text: str, max_sentences=2):
     """Simple extractive summarization"""
-    sentences = re.split(r'[.!?]+', text)
+    sentences = _RE_SENTENCE_SPLIT.split(text)
     sentences = [s.strip() for s in sentences if s.strip()]
 
     if len(sentences) <= max_sentences:
