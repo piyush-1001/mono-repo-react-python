@@ -1,0 +1,17 @@
+[project]
+name = "simple-fastapi-be"
+version = "0.1.0"
+description = "Simple FastAPI backend for a one-page frontend"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main"]
