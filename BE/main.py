@@ -86,12 +86,19 @@ def classify_text(text: str):
         score = sum(1 for word in words if word in keywords)
         scores[category] = score
 
-    top_category = max(scores, key=scores.get) if max(scores.values()) > 0 else "general"
+    max_score = max(scores.values()) if scores else 0
+    top_category = max(scores, key=scores.get) if max_score > 0 else "general"
+
+    # When no category matches, use 'general' with 0 confidence
+    if top_category == "general":
+        confidence = 0
+    else:
+        confidence = round(scores.get(top_category, 0) / max(len(words), 1) * 100, 1)
 
     return {
         "category": top_category,
         "scores": scores,
-        "confidence": round(scores[top_category] / max(len(words), 1) * 100, 1) if scores[top_category] > 0 else 0
+        "confidence": confidence
     }
 
 
