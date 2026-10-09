@@ -28,9 +28,12 @@ _RE_EMAILS = re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
 _RE_URLS = re.compile(r'https?://\S+')
 _RE_SENTENCE_SPLIT = re.compile(r'[.!?]+')
 
+# Maximum input text length to prevent ReDoS and memory exhaustion
+MAX_TEXT_LENGTH = 10000
+
 
 class MessageRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=10000)
 
 
 # ============== Sentiment Analysis ==============
