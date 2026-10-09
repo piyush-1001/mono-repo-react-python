@@ -158,18 +158,6 @@ button:disabled {
   color: #f8fafc;
 }
 
-.analysis-grid strong.positive {
-  color: #4ade80;
-}
-
-.analysis-grid strong.negative {
-  color: #f87171;
-}
-
-.analysis-grid strong.neutral {
-  color: #fbbf24;
-}
-
 /* Navigation */
 .nav {
   position: fixed;
