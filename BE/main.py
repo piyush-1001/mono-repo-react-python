@@ -21,6 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Pre-compiled regex patterns for entity extraction
+_RE_CAPITALIZED = re.compile(r'\b[A-Z][a-z]+\b')
+_RE_NUMBERS = re.compile(r'\b\d+\.?\d*\b')
+_RE_EMAILS = re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
+_RE_URLS = re.compile(r'https?://\S+')
+_RE_SENTENCE_SPLIT = re.compile(r'[.!?]+')
+
 
 class MessageRequest(BaseModel):
     message: str
@@ -106,16 +113,16 @@ def classify_text(text: str):
 def extract_entities(text: str):
     """Simple rule-based entity extraction"""
     # Capitalized words (potential proper nouns)
-    capitalized = re.findall(r'\b[A-Z][a-z]+\b', text)
+    capitalized = _RE_CAPITALIZED.findall(text)
 
     # Numbers
-    numbers = re.findall(r'\b\d+\.?\d*\b', text)
+    numbers = _RE_NUMBERS.findall(text)
 
     # Emails
-    emails = re.findall(r'\b[\w.-]+@[\w.-]+\.\w+\b', text)
+    emails = _RE_EMAILS.findall(text)
 
     # URLs
-    urls = re.findall(r'https?://\S+', text)
+    urls = _RE_URLS.findall(text)
 
     # Capitalized sequences (names, places)
     proper_nouns = [w for w in capitalized if len(w) > 2][:10]
@@ -133,7 +140,7 @@ def extract_entities(text: str):
 def analyze_text_stats(text: str):
     """Calculate various text statistics"""
     words = text.split()
-    sentences = re.split(r'[.!?]+', text)
+    sentences = _RE_SENTENCE_SPLIT.split(text)
     sentences = [s.strip() for s in sentences if s.strip()]
 
     char_count = len(text)
@@ -160,7 +167,7 @@ def analyze_text_stats(text: str):
 # ============== Text Summarization (Simple) ==============
 def summarize_text(text: str, max_sentences=2):
     """Simple extractive summarization"""
-    sentences = re.split(r'[.!?]+', text)
+    sentences = _RE_SENTENCE_SPLIT.split(text)
     sentences = [s.strip() for s in sentences if s.strip()]
 
     if len(sentences) <= max_sentences:
