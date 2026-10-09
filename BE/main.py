@@ -24,7 +24,8 @@ app.add_middleware(
 # Pre-compiled regex patterns for entity extraction
 _RE_CAPITALIZED = re.compile(r'\b[A-Z][a-z]+\b')
 _RE_NUMBERS = re.compile(r'\b\d+\.?\d*\b')
-_RE_EMAILS = re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
+# Email regex supports: standard emails, + addressing, dots, hyphens in local and domain parts
+_RE_EMAILS = re.compile(r'\b[\w.+-]+@[\w.-]+\.\w{2,}\b')
 _RE_URLS = re.compile(r'https?://\S+')
 _RE_SENTENCE_SPLIT = re.compile(r'[.!?]+')
 
