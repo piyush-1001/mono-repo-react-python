@@ -26,6 +26,8 @@ def tokenize(text: str):
 # ============================ Naive Bayes ============================
 
 # Hand-labeled corpus: "spam" vs "ham". Replace/extend to improve accuracy.
+# Note: This corpus should be extended or replaced with a larger dataset
+# in production to improve model robustness against adversarial inputs.
 TRAINING_CORPUS = [
     ("Win a free iPhone now click here to claim your prize", "spam"),
     ("Congratulations you have been selected for a cash prize call now", "spam"),
@@ -196,7 +198,17 @@ class MarkovTextGenerator:
             self.transitions[first].append(second)
         self.words = list(self.transitions)
 
-    def generate(self, seed: str = "", max_words: int = 30):
+    def generate(self, seed: str = "", max_words: int = 30, seed_value: int = None):
+        """Generate text using bigram Markov chain.
+
+        Args:
+            seed: Initial words to start the chain
+            max_words: Maximum number of words to generate
+            seed_value: Optional random seed for reproducible output
+        """
+        if seed_value is not None:
+            random.seed(seed_value)
+
         seed_tokens = tokenize(seed)
         if seed_tokens and seed_tokens[-1] in self.transitions:
             chain = list(seed_tokens)

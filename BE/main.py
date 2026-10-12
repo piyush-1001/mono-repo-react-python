@@ -19,14 +19,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Maximum message length to prevent memory exhaustion (10KB)
+MAX_MESSAGE_LENGTH = 10000
+
+# Rate limiting state for cluster endpoint (simple in-memory counter)
+import time
+_cluster_last_request = {"time": 0, "count": 0}
+_CLUSTER_RATE_LIMIT_SECONDS = 1
+_CLUSTER_MAX_REQUESTS = 5
+
 
 class MessageRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=MAX_MESSAGE_LENGTH)
 
 
 class SimilarityRequest(BaseModel):
-    text_a: str
-    text_b: str
+    text_a: str = Field(..., max_length=MAX_MESSAGE_LENGTH)
+    text_b: str = Field(..., max_length=MAX_MESSAGE_LENGTH)
 
 
 class GenerateRequest(BaseModel):
@@ -50,8 +59,19 @@ NEGATIVE_WORDS = {
 }
 
 
+def _sanitize_text(text: str) -> str:
+    """Sanitize input text to prevent simple adversarial manipulation."""
+    # Remove repeated characters (e.g., "goooood" -> "good")
+    import re
+    text = re.sub(r'(.)\1{2,}', r'\1\1', text)
+    # Normalize whitespace
+    text = ' '.join(text.split())
+    return text
+
+
 def simple_ai_analysis(text: str):
-    words = [word.strip(".,!?;:'\"()[]{}") for word in text.lower().split()]
+    sanitized = _sanitize_text(text)
+    words = [word.strip(".,!?;:'\"()[]{}") for word in sanitized.lower().split()]
     words = [word for word in words if word]
 
     positive_score = sum(1 for word in words if word in POSITIVE_WORDS)
@@ -125,6 +145,20 @@ def generate_text(payload: GenerateRequest):
 @app.post("/api/cluster")
 def cluster_documents(payload: ClusterRequest):
     """K-means clustering over TF-IDF vectors of the given documents."""
+    global _cluster_last_request
+
+    # Rate limiting check
+    now = time.time()
+    if now - _cluster_last_request["time"] < _CLUSTER_RATE_LIMIT_SECONDS:
+        _cluster_last_request["count"] += 1
+        if _cluster_last_request["count"] > _CLUSTER_MAX_REQUESTS:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please wait before making more cluster requests.",
+            )
+    else:
+        _cluster_last_request = {"time": now, "count": 1}
+
     if payload.k > len(payload.texts):
         raise HTTPException(
             status_code=400,
