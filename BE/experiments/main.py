@@ -23,5 +23,5 @@ total_tasks = 0
 
 percentage = calculate_percentage(completed_tasks, total_tasks)
 
-print(f"Completion: {percentage}%")
+print(f"Completion: {percentage} %")
 
