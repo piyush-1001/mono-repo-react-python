@@ -1,11 +1,19 @@
 import express from 'express';
 import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve React build in production
+app.use(express.static(join(__dirname, '../dist')));
 
 // ============================================================
 // In-memory data store
@@ -29,29 +37,18 @@ const badRequest = (res, msg) => res.status(400).json({ error: msg });
 // Routes
 // ============================================================
 
-// Root
 app.get('/', (_req, res) => {
   res.json({
     message: 'Node.js Express API is running',
     version: '1.0',
-    endpoints: [
-      'GET  /',
-      'GET  /api/health',
-      'GET  /api/tasks',
-      'POST /api/tasks',
-      'GET  /api/tasks/:id',
-      'PUT  /api/tasks/:id',
-      'DELETE /api/tasks/:id',
-    ],
+    endpoints: ['GET /', 'GET /api/health', 'GET /api/tasks', 'POST /api/tasks', 'GET /api/tasks/:id', 'PUT /api/tasks/:id', 'DELETE /api/tasks/:id'],
   });
 });
 
-// Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get all tasks
 app.get('/api/tasks', (req, res) => {
   const { status, priority } = req.query;
   let result = tasks;
@@ -60,47 +57,39 @@ app.get('/api/tasks', (req, res) => {
   res.json({ count: result.length, tasks: result });
 });
 
-// Create a task
 app.post('/api/tasks', (req, res) => {
   const { title, priority = 'medium' } = req.body;
   if (!title) return badRequest(res, 'title is required');
-  const task = {
-    id: nextId++,
-    title: title.trim(),
-    status: 'pending',
-    priority,
-    createdAt: new Date().toISOString(),
-  };
+  const task = { id: nextId++, title: title.trim(), status: 'pending', priority, createdAt: new Date().toISOString() };
   tasks.push(task);
   res.status(201).json({ message: 'Task created', task });
 });
 
-// Get single task
 app.get('/api/tasks/:id', (req, res) => {
   const task = tasks.find((t) => t.id === Number(req.params.id));
   task ? res.json(task) : notFound(res);
 });
 
-// Update a task
 app.put('/api/tasks/:id', (req, res) => {
   const idx = tasks.findIndex((t) => t.id === Number(req.params.id));
   if (idx === -1) return notFound(res);
-
   const { title, status, priority } = req.body;
   if (title !== undefined) tasks[idx].title = title.trim();
   if (status !== undefined) tasks[idx].status = status;
   if (priority !== undefined) tasks[idx].priority = priority;
-
   res.json({ message: 'Task updated', task: tasks[idx] });
 });
 
-// Delete a task
 app.delete('/api/tasks/:id', (req, res) => {
   const idx = tasks.findIndex((t) => t.id === Number(req.params.id));
   if (idx === -1) return notFound(res);
-
   tasks.splice(idx, 1);
   res.json({ message: 'Task deleted' });
+});
+
+// Serve React index.html for all non-API routes (SPA)
+app.get('*', (_req, res) => {
+  res.sendFile(join(__dirname, '../dist/index.html'));
 });
 
 // ============================================================
