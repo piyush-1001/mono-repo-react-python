@@ -1,0 +1,15 @@
+{
+  "name": "ai-ml-node-backend",
+  "version": "1.0.0",
+  "description": "Node.js Express backend with AI/ML features",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
