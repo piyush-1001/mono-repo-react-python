@@ -1,0 +1,71 @@
+# --- Python build artifacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+develop-eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Tooling caches ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.tox/
+.nox/
+
+# --- Secrets and local config ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+*.local
+
+# --- Logs ---
+*.log
+logs/
+gunicorn.pid
+celerybeat-schedule*
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Runtime data ---
+celerybeat.pid
+tmp/
+tmp_*
+*.pid
+
+# --- Migrations safety: keep versions/, ignore local db dumps ---
+*.sql.gz
+db_dumps/

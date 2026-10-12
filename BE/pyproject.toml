@@ -1,0 +1,147 @@
+[project]
+name = "inventory-api"
+version = "1.0.0"
+description = "Warehouse inventory and stock movement API (FastAPI + SQLAlchemy async)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Platform Team", email = "platform@example.com" }]
+keywords = ["fastapi", "sqlalchemy", "inventory", "warehouse", "postgresql"]
+
+dependencies = [
+    # --- web layer ---
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.6",
+    "gunicorn>=23.0.0",
+    "python-multipart>=0.0.9",
+    # --- data layer ---
+    "sqlalchemy[asyncio]>=2.0.35",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.2",
+    "greenlet>=3.0.3",
+    # --- validation / settings ---
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.4.0",
+    "python-dotenv>=1.0.1",
+    "email-validator>=2.2.0",
+    # --- caching / session store ---
+    "redis>=5.0.8",
+    # --- rate limiting ---
+    "fastapi-limiter==0.3.0",
+    "pyrate-limiter>=3.5.1",
+    # --- security ---
+    "cryptography>=43.0.1",
+    "PyJWT>=2.9.0",
+    "argon2-cffi>=23.1.0",
+    # --- observability ---
+    "sentry-sdk[fastapi,sqlalchemy,redis]>=2.14.0",
+    # --- http client / utilities ---
+    "httpx>=0.27.2",
+    "orjson>=3.10.7",
+    "tenacity>=9.0.0",
+    "typer>=0.12.5",
+    "rich>=13.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.6.1",
+    "anyio>=4.4.0",
+    "respx>=0.21.1",
+    "freezegun>=1.5.1",
+    "factory-boy>=3.3.1",
+    "ruff>=0.6.4",
+    "mypy>=1.11.2",
+    "types-redis>=4.6.0.20240902",
+    "pre-commit>=3.8.0",
+    "httpx>=0.27.2",
+]
+
+[project.scripts]
+inventory-cli = "cli:cli"
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = [
+    "A",  # builtins shadowing
+    "ARG",
+    "B",  # bugbear
+    "C4",
+    "D",  # pydocstyle
+    "E",
+    "F",
+    "I",  # isort
+    "N",
+    "RUF",
+    "S",  # bandit
+    "SIM",
+    "T20",  # no print
+    "UP",
+]
+ignore = [
+    "B008", # Depends() in argument defaults is the FastAPI idiom
+    "D203",
+    "D213",
+    "S101", # assert in tests
+    "S104",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG001", "D100", "D103", "S105", "T201"]
+"src/cli.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "constants", "core"]
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = "migrations/"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers --cov=apps --cov=core --cov-config=pyproject.toml --cov-report=term-missing"
+markers = [
+    "integration: tests that require Postgres and Redis",
+]
+filterwarnings = [
+    "error::DeprecationWarning:apps.*",
+]
+
+[tool.coverage.run]
+branch = true
+omit = ["*/migrations/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+fail_under = 75
+show_missing = true
