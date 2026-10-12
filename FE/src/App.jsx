@@ -1,23 +1,23 @@
 import { Routes, Route, Link } from 'react-router-dom';
-import SentimentAnalyzer from './pages/SentimentAnalyzer';
-import About from './pages/About';
+import TaskManager from './pages/TaskManager';
 import History from './pages/History';
+import About from './pages/About';
 
 function App() {
   return (
     <>
       <nav className="nav">
-        <Link to="/" className="nav-brand">Smart App</Link>
+        <Link to="/" className="nav-brand">Task Manager</Link>
         <div className="nav-links">
-          <Link to="/">Analyzer</Link>
+          <Link to="/">Tasks</Link>
           <Link to="/history">History</Link>
           <Link to="/about">About</Link>
         </div>
       </nav>
       <Routes>
-        <Route path="/" element={<SentimentAnalyzer />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/" element={<TaskManager />} />
         <Route path="/history" element={<History />} />
+        <Route path="/about" element={<About />} />
       </Routes>
     </>
   );
