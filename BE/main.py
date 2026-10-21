@@ -8,6 +8,7 @@ from ml_models import (
     markov_generator,
     kmeans_cluster,
 )
+from task_ranker import rank_tasks
 
 app = FastAPI(title="AI/ML Smart App API")
 
@@ -37,6 +38,18 @@ class GenerateRequest(BaseModel):
 class ClusterRequest(BaseModel):
     texts: list[str] = Field(min_length=2)
     k: int = Field(default=2, ge=1, le=10)
+
+
+class TaskItem(BaseModel):
+    id: int
+    title: str
+    status: str = "pending"
+    priority: str = "medium"
+    created_at: str | None = None
+
+
+class RankRequest(BaseModel):
+    tasks: list[TaskItem] = Field(min_length=1)
 
 
 # ============== Sentiment Analysis (keyword-based) ==============
@@ -127,6 +140,13 @@ def list_models():
                 "method": "POST",
                 "description": "Groups documents by cosine distance over TF-IDF vectors.",
             },
+            {
+                "id": "rank-tasks",
+                "name": "Task Priority Ranker",
+                "endpoint": "/api/rank-tasks",
+                "method": "POST",
+                "description": "Scores tasks by priority, status, age and urgent wording.",
+            },
         ]
     }
 
@@ -175,3 +195,9 @@ def cluster_documents(payload: ClusterRequest):
             detail=f"k={payload.k} is larger than the number of documents ({len(payload.texts)})",
         )
     return kmeans_cluster(payload.texts, k=payload.k)
+
+
+@app.post("/api/rank-tasks")
+def rank_task_list(payload: RankRequest):
+    """Rank tasks from the Node.js store by urgency (see task_ranker.py)."""
+    return rank_tasks([task.model_dump() for task in payload.tasks])

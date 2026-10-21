@@ -534,3 +534,49 @@ input[type='range'] {
   background: transparent;
   accent-color: #3b82f6;
 }
+
+/* ============ Task Insights ============ */
+.task-item.next-up {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.rank-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rank-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rank-pos {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rank-reasons {
+  margin: 0;
+  font-size: 12px;
+}
+
+.rank-score {
+  font-size: 13px;
+  font-weight: 700;
+  color: #93c5fd;
+  min-width: 42px;
+  text-align: right;
+}
