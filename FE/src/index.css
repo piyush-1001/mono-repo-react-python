@@ -158,6 +158,10 @@ button:disabled {
   color: #f8fafc;
 }
 
+.analysis-grid strong.positive { color: #4ade80; }
+.analysis-grid strong.negative { color: #f87171; }
+.analysis-grid strong.neutral { color: #fbbf24; }
+
 /* Navigation */
 .nav {
   position: fixed;
@@ -472,4 +476,61 @@ button:disabled {
   color: #64748b;
   padding: 24px;
   margin: 0;
+}
+
+/* ============ ML Lab ============ */
+.muted {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.error-msg {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.cluster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.cluster-card {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.cluster-card h3 {
+  margin: 0 0 6px;
+  color: #60a5fa;
+  font-size: 15px;
+}
+
+input[type='range'] {
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: #3b82f6;
 }

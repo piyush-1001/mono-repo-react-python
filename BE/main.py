@@ -87,6 +87,50 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/models")
+def list_models():
+    """Catalogue of the models exposed by this API, consumed by the frontend."""
+    return {
+        "models": [
+            {
+                "id": "sentiment",
+                "name": "Keyword Sentiment Analysis",
+                "endpoint": "/api/sentiment",
+                "method": "POST",
+                "description": "Scores a text as positive, negative or neutral.",
+            },
+            {
+                "id": "spam",
+                "name": "Naive Bayes Spam Classifier",
+                "endpoint": "/api/predict",
+                "method": "POST",
+                "description": "Multinomial naive Bayes trained on a spam/ham corpus.",
+            },
+            {
+                "id": "similarity",
+                "name": "TF-IDF Cosine Similarity",
+                "endpoint": "/api/similarity",
+                "method": "POST",
+                "description": "Compares two texts term-by-term with TF-IDF weighting.",
+            },
+            {
+                "id": "generate",
+                "name": "Markov Text Generator",
+                "endpoint": "/api/generate",
+                "method": "POST",
+                "description": "Generates text from a bigram Markov chain.",
+            },
+            {
+                "id": "cluster",
+                "name": "K-Means Document Clustering",
+                "endpoint": "/api/cluster",
+                "method": "POST",
+                "description": "Groups documents by cosine distance over TF-IDF vectors.",
+            },
+        ]
+    }
+
+
 @app.post("/api/message")
 def send_message(payload: MessageRequest):
     """Keyword sentiment analysis (used by the frontend analyzer)."""
