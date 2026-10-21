@@ -42,3 +42,28 @@ export const generateText = (seed, maxWords = 30) =>
 
 export const clusterTexts = (texts, k = 2) =>
   request('/api/cluster', { method: 'POST', body: { texts, k } });
+
+// Tasks live in the Node.js API; ranking logic lives in Python.
+export const TASKS_API_BASE =
+  import.meta.env.VITE_TASKS_API_BASE || 'http://localhost:3000';
+
+export const fetchTasks = async () => {
+  const res = await fetch(`${TASKS_API_BASE}/api/tasks`);
+  if (!res.ok) throw new Error(`Task API failed with status ${res.status}`);
+  const data = await res.json();
+  return data.tasks || [];
+};
+
+export const rankTasks = (tasks) =>
+  request('/api/rank-tasks', {
+    method: 'POST',
+    body: {
+      tasks: tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        created_at: task.createdAt,
+      })),
+    },
+  });
