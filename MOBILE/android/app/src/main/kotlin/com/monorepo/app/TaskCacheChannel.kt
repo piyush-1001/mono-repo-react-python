@@ -90,6 +90,11 @@ class TaskCacheChannel(context: Context) : MethodChannel.MethodCallHandler {
         /** Must match taskCacheChannelName in offline_task_cache.dart. */
         const val CHANNEL_NAME = "monorepo/task_cache"
 
+        // MethodChannel holds its handler weakly; see the same note in
+        // DeviceInfoChannel. Without this the cache can go silent after a
+        // garbage collection with nothing logged.
+        private var registration: TaskCacheChannel? = null
+
         /**
          * Registers the channel; call from `MainActivity.configureFlutterEngine`
          * alongside DeviceInfoChannel. Unregistered, the Dart cache simply
@@ -102,7 +107,9 @@ class TaskCacheChannel(context: Context) : MethodChannel.MethodCallHandler {
                 flutterEngine.dartExecutor.binaryMessenger,
                 CHANNEL_NAME
             )
-            channel.setMethodCallHandler(TaskCacheChannel(context))
+            val handler = TaskCacheChannel(context)
+            registration = handler
+            channel.setMethodCallHandler(handler)
             return channel
         }
     }
