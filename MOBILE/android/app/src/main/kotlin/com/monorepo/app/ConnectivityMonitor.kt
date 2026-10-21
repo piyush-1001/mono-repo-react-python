@@ -44,7 +44,7 @@ class ConnectivityMonitor(context: Context) {
 
         override fun onAvailable(network: Network) {
             synchronized(available) { available.add(network) }
-            publish(online = true)
+            publish(online = true, source = network)
         }
 
         override fun onLost(network: Network) {
@@ -68,7 +68,7 @@ class ConnectivityMonitor(context: Context) {
             synchronized(available) {
                 changed = if (satisfied) available.add(network) else available.remove(network)
             }
-            if (changed) publish(online = satisfiedOrSettled())
+            if (changed) publish(online = satisfiedOrSettled(), source = network)
         }
     }
 
@@ -134,20 +134,28 @@ class ConnectivityMonitor(context: Context) {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun publish(online: Boolean) {
+    /**
+     * [source] is the network that triggered the event. Reading meteredness off
+     * it, rather than off activeNetwork, matters when more than one network is
+     * up at once: a Wi-Fi change must not be reported with cellular's billing
+     * class just because the system preferred cellular.
+     */
+    private fun publish(online: Boolean, source: Network? = null) {
         val current = listener ?: return
         val payload = mapOf<String, Any>(
             "online" to online,
-            // "Metered" matches iOS's isExpensive: cellular and hotspot links,
+            // "metered" matches iOS's isExpensive: cellular and hotspot links,
             // which callers may want to defer bulk syncs for.
-            "metered" to (online && isMetered())
+            "metered" to (online && isMetered(source))
         )
         mainHandler.post { current(payload) }
     }
 
-    private fun isMetered(): Boolean {
+    private fun isMetered(source: Network?): Boolean {
         val manager = connectivityManager ?: return false
-        val network = manager.activeNetwork ?: return false
+        // A network that was just lost has no readable capabilities left, so the
+        // fallback is the only option in onLost.
+        val network = source ?: manager.activeNetwork ?: return false
         val capabilities = manager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED).not()
     }
