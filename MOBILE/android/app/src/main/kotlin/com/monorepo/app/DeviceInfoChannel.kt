@@ -94,6 +94,11 @@ class DeviceInfoChannel(context: Context) : MethodChannel.MethodCallHandler {
         /** Must match deviceChannelName in task_api_service.dart. */
         const val CHANNEL_NAME = "monorepo/device_info"
 
+        // MethodChannel keeps only a weak reference to its handler, so a handler
+        // nothing else points at can be collected and the channel then stops
+        // answering. This reference is what keeps it alive for the process.
+        private var registration: DeviceInfoChannel? = null
+
         /**
          * Wires the channel into a running Flutter engine. Call this from
          * `MainActivity.configureFlutterEngine`; without it the Dart side gets
@@ -105,7 +110,9 @@ class DeviceInfoChannel(context: Context) : MethodChannel.MethodCallHandler {
                 flutterEngine.dartExecutor.binaryMessenger,
                 CHANNEL_NAME
             )
-            channel.setMethodCallHandler(DeviceInfoChannel(context))
+            val handler = DeviceInfoChannel(context)
+            registration = handler
+            channel.setMethodCallHandler(handler)
             return channel
         }
     }
