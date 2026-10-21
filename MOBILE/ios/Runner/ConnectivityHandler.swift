@@ -16,7 +16,7 @@ import Foundation
 ///         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
 ///     ) -> Bool {
 ///         if let controller = window?.rootViewController as? FlutterViewController {
-///             ConnectivityHandler.register(with: controller.engine.binaryMessenger)
+///             ConnectivityHandler.register(with: controller.binaryMessenger)
 ///         }
 ///         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
 ///     }

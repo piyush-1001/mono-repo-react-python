@@ -1,0 +1,65 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Both backends are plain http on the host machine, and Android blocks
+        cleartext traffic by default from API 28. Without this the app fails the
+        request before it leaves the device, which surfaces as a socket error
+        rather than an HTTP status and is easy to misread as a backend bug.
+
+        The narrower alternative is a res/xml/network_security_config.xml that
+        permits cleartext for these hosts only, plus android:networkSecurityConfig
+        below. Prefer that before any release build: blanket cleartext also
+        permits it for whatever URL a future feature adds.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Required by DeviceInfoChannel.isOnline and by ConnectivityMonitor's
+        registerNetworkCallback, which throws SecurityException without it. That
+        failure is caught and reported as UNAVAILABLE, so the app keeps running
+        with connectivity checks permanently answering "unknown".
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name="${applicationName}"
+        android:label="Task Queue"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
+        <!--
+            `.MainActivity` resolves against the Gradle `namespace`, which must be
+            com.monorepo.app to match the Kotlin package that declares it.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <!--
+                Drawn while the engine starts, so the first frame is this
+                background rather than a blank white window.
+            -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Embedding v2. Absent or set to 1, the Flutter tool refuses to build
+            this project rather than failing at runtime.
+        -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>
