@@ -1,0 +1,24 @@
+<network-security-config>
+    <!--
+        Replaces the blanket android:usesCleartextTraffic="true" the app carried
+        until now. That flag permitted plain HTTP to *any* host, so a future
+        feature adding a real endpoint would ship over http with nothing
+        complaining. Here cleartext is allowed only where the monorepo backends
+        actually live, and everything else keeps the API 28+ default of refusing
+        it. The base-config is spelled out rather than left to the default so the
+        intent survives someone editing this file later.
+    -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!--
+            The Android emulator reaches the machine hosting it at 10.0.2.2, not
+            at localhost: inside the emulator, localhost is the emulator itself.
+            Both are listed because the two spellings reach the dev servers from
+            different setups - a physical device on the same network would use
+            its own LAN address, which is deliberately not opened up here.
+        -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

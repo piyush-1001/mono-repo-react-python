@@ -1,15 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-        Both backends are plain http on the host machine, and Android blocks
-        cleartext traffic by default from API 28. Without this the app fails the
-        request before it leaves the device, which surfaces as a socket error
-        rather than an HTTP status and is easy to misread as a backend bug.
-
-        The narrower alternative is a res/xml/network_security_config.xml that
-        permits cleartext for these hosts only, plus android:networkSecurityConfig
-        below. Prefer that before any release build: blanket cleartext also
-        permits it for whatever URL a future feature adds.
+        Plain HTTP to the dev backends is permitted only for the hosts listed in
+        res/xml/network_security_config.xml, which the application tag below
+        points at. Anything else keeps the API 28+ default of refusing cleartext.
+        Without that allowance the request dies before it leaves the device and
+        surfaces as a socket error rather than an HTTP status, which reads like a
+        backend bug.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -25,7 +22,7 @@
         android:name="${applicationName}"
         android:label="Task Queue"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <!--
             `.MainActivity` resolves against the Gradle `namespace`, which must be
