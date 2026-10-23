@@ -21,6 +21,10 @@ import 'package:flutter/services.dart';
 
 const String deviceChannelName = 'monorepo/device_info';
 
+/// Streamed by ConnectivityMonitor.kt and NetworkMonitor.swift. One name for
+/// both platforms, so nothing here asks which OS it is on.
+const String connectivityChannelName = 'monorepo/connectivity';
+
 /// Snapshot of the platform state a sync should not ignore.
 class DeviceSnapshot {
   const DeviceSnapshot({
@@ -87,6 +91,70 @@ class DeviceInfo {
         online: true,
         model: 'unknown',
       );
+}
+
+/// One connectivity snapshot pushed by the platform.
+class ConnectivityStatus {
+  const ConnectivityStatus({required this.online, required this.metered});
+
+  /// Events arrive as maps. Absent or wrongly-typed keys read as offline rather
+  /// than online: a listener that assumes connectivity it did not get will fire
+  /// a request that fails, and the failure will look like a backend problem.
+  factory ConnectivityStatus.fromEvent(Object? event) {
+    if (event is Map) {
+      return ConnectivityStatus(
+        online: event['online'] == true,
+        metered: event['metered'] == true,
+      );
+    }
+    return const ConnectivityStatus(online: false, metered: false);
+  }
+
+  final bool online;
+
+  /// Cellular or hotspot. Callers may want to defer bulk work on these even
+  /// while online.
+  final bool metered;
+
+  @override
+  String toString() => 'ConnectivityStatus(online: $online, metered: $metered)';
+}
+
+/// Reads the connectivity stream. Unlike [DeviceInfo], which answers a question
+/// when asked, this is a subscription: the useful signal is a change with nobody
+/// waiting on it, such as the network returning after a failed sync.
+class Connectivity {
+  /// Production reader, bound to [connectivityChannelName].
+  const Connectivity() : channel = const EventChannel(connectivityChannelName);
+
+  /// Test hook: feed events through a stubbed channel.
+  const Connectivity.withChannel(this.channel);
+
+  final EventChannel channel;
+
+  /// Every transition the platform reports, including the current state, which
+  /// both handlers deliver on subscribe so a listener never has to guess.
+  ///
+  /// If no handler is registered the stream emits an error rather than staying
+  /// silent, so a listener must supply onError or the error surfaces as an
+  /// unhandled async exception.
+  Stream<ConnectivityStatus> get status =>
+      channel.receiveBroadcastStream().map(ConnectivityStatus.fromEvent);
+
+  /// Fires once per recovery — the offline to online edge, not every online
+  /// event. Android can emit repeated online events for one recovery, and keying
+  /// a retry off the value alone would retry the same request several times.
+  ///
+  /// Assumes online until told otherwise, so a launch that starts online does not
+  /// fire a retry for a failure that has not happened yet.
+  Stream<ConnectivityStatus> get reconnections async* {
+    var wasOnline = true;
+    await for (final event in status) {
+      final recovered = event.online && !wasOnline;
+      wasOnline = event.online;
+      if (recovered) yield event;
+    }
+  }
 }
 
 /// One task as stored by the Node.js API, plus the ranker's annotations.

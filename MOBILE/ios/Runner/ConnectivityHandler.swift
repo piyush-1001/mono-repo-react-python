@@ -53,19 +53,17 @@ final class ConnectivityHandler: NSObject, FlutterStreamHandler {
             return nil
         }
 
-        let watching = monitor.start { [weak self] payload in
+        // No failure to report here. NWPathMonitor needs no entitlement or user
+        // permission, so start() cannot be refused the way Android's
+        // registerNetworkCallback throws SecurityException without
+        // ACCESS_NETWORK_STATE. Reporting UNAVAILABLE from a branch that cannot
+        // run would give Dart a surface to handle that never fires on iOS, while
+        // the Android side does fire it - the asymmetry is Android's to express.
+        monitor.start { [weak self] payload in
             // A delivery already queued on the main thread can arrive after
             // onUnsubscribe cleared the sink, so re-check before emitting.
             guard self?.sink != nil else { return }
             sink(payload)
-        }
-
-        if !watching {
-            return FlutterError(
-                code: "UNAVAILABLE",
-                message: "Could not start connectivity monitoring",
-                details: nil
-            )
         }
         return nil
     }
