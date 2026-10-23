@@ -25,12 +25,17 @@ import UIKit
 
     /// Registers every implicit channel this app implements on iOS.
     ///
-    /// Two channels that exist on Android are intentionally absent here:
-    /// `monorepo/device_info` and `monorepo/task_cache` have Kotlin handlers only.
-    /// On iOS they raise MissingPluginException, which both Dart sides already
-    /// treat as "no data" - the screen then behaves like a first run rather than
-    /// crashing. Porting them means adding Swift handlers and registering them
-    /// alongside this call.
+    /// Three of the four channels the Dart side declares are covered here.
+    /// `monorepo/power_state` is the exception: PowerStateHandler.swift exists but
+    /// nothing calls its register(), so the Dart side still reads an unknown
+    /// power state, which is permissive rather than wrong.
+    ///
+    /// A channel left out is never a crash - the Dart readers catch
+    /// MissingPluginException and fall back to their defaults - which is exactly
+    /// why they belong in one list: an unregistered cache reports first-run
+    /// forever and an unregistered device_info assumes a charged, online phone.
+    /// Register each handler here rather than from an initializer, so the startup
+    /// order stays readable.
     ///
     /// There is no GeneratedPluginRegistrant call because there are no plugins:
     /// the Dart side depends on dart:io and Flutter core only. Add
@@ -47,5 +52,7 @@ import UIKit
         }
 
         ConnectivityHandler.register(with: controller.binaryMessenger)
+        DeviceInfoHandler.register(with: controller.binaryMessenger)
+        TaskCacheHandler.register(with: controller.binaryMessenger)
     }
 }
