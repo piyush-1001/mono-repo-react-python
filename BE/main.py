@@ -1,14 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from corpus_prep import MIN_DOCUMENTS, prepare
+from lsa_topic_model import lsa_topics
 from ml_models import (
     spam_classifier,
     text_similarity,
     markov_generator,
     kmeans_cluster,
 )
+from task_export import export_filename, to_csv, to_markdown
 from task_ranker import rank_tasks
+from task_store import TaskStoreError, fetch_tasks
 
 app = FastAPI(title="AI/ML Smart App API")
 
@@ -50,6 +54,27 @@ class TaskItem(BaseModel):
 
 class RankRequest(BaseModel):
     tasks: list[TaskItem] = Field(min_length=1)
+
+
+class TopicsRequest(BaseModel):
+    # min_length rejects an empty array only. The real floor is content-based -
+    # two documents that are not all whitespace - and belongs to corpus_prep,
+    # whose error says which of the posted items were blank rather than
+    # "expected 2 items".
+    texts: list[str] = Field(min_length=1)
+    topics: int = Field(default=2, ge=1, le=5)
+    top_terms: int = Field(default=5, ge=1, le=15)
+
+
+class ExportRequest(BaseModel):
+    tasks: list[TaskItem] = Field(min_length=1)
+    format: str = "csv"
+    title: str = "Task ranking"
+
+
+# Anything else is a 400 rather than a fallback to csv: a caller that asks for
+# "xlsx" and quietly receives CSV learns about it by opening the file.
+EXPORT_FORMATS = ("csv", "markdown")
 
 
 # ============== Sentiment Analysis (keyword-based) ==============
@@ -147,6 +172,27 @@ def list_models():
                 "method": "POST",
                 "description": "Scores tasks by priority, status, age and urgent wording.",
             },
+            {
+                "id": "rank-stored-tasks",
+                "name": "Stored Task Ranker",
+                "endpoint": "/api/tasks/ranked",
+                "method": "GET",
+                "description": "Reads the Node.js task store and ranks it in one call.",
+            },
+            {
+                "id": "export-tasks",
+                "name": "Ranking Export",
+                "endpoint": "/api/tasks/export",
+                "method": "POST",
+                "description": "Ranks posted tasks and returns them as CSV or Markdown.",
+            },
+            {
+                "id": "topics",
+                "name": "LSA Topic Model",
+                "endpoint": "/api/topics",
+                "method": "POST",
+                "description": "Extracts latent topics from a set of documents.",
+            },
         ]
     }
 
@@ -201,3 +247,83 @@ def cluster_documents(payload: ClusterRequest):
 def rank_task_list(payload: RankRequest):
     """Rank tasks from the Node.js store by urgency (see task_ranker.py)."""
     return rank_tasks([task.model_dump() for task in payload.tasks])
+
+
+@app.get("/api/tasks/ranked")
+def rank_stored_tasks():
+    """Fetch the tasks from the Node.js store and rank them in one call.
+
+    The caller sends nothing, which is the point: a phone asking "what should I
+    do next" should not first pull every task and post the whole list back.
+
+    502 when the store cannot be read. The ranker itself is healthy, so a 4xx
+    would blame a request that was fine, and 500 would read as a bug in this
+    service. `detail` carries the reason, which is the distinction callers care
+    about more than the code.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    # An empty store is an answer rather than a failure, so it is ranked rather
+    # than reported: the response shape is unchanged and "nothing to do" is true.
+    return rank_tasks(tasks)
+
+
+@app.post("/api/tasks/export")
+def export_task_ranking(payload: ExportRequest):
+    """Rank the posted tasks and return them as CSV or Markdown (see task_export.py)."""
+    requested = payload.format.strip().lower()
+    if requested not in EXPORT_FORMATS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"format must be one of: {', '.join(EXPORT_FORMATS)}",
+        )
+
+    ranked = rank_tasks([task.model_dump() for task in payload.tasks])["ranked"]
+
+    if requested == "markdown":
+        # Inline rather than as an attachment: Markdown gets pasted into a README,
+        # so a download would be an extra step on the way to a copy.
+        return Response(
+            content=to_markdown(ranked, title=payload.title),
+            media_type="text/markdown",
+        )
+
+    # CSV arrives as a download because a spreadsheet opens a .csv far better than
+    # a browser does, and the filename is timestamped so exports stack instead of
+    # replacing each other in the downloads folder.
+    filename = export_filename("task-ranking")
+    return Response(
+        content=to_csv(ranked),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/topics")
+def discover_topics(payload: TopicsRequest):
+    """LSA topic extraction over the posted documents (see lsa_topic_model.py)."""
+    corpus = prepare(payload.texts)
+    if not corpus.usable:
+        # 400 with the reason prepare() collected: "five documents, all empty"
+        # is the caller's to fix, and LsaTopicModel's own ValueError for an empty
+        # corpus would reach them as a 500 saying "LSA needs at least one
+        # document" about documents they did send.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"need at least {MIN_DOCUMENTS} non-empty documents "
+                f"({'; '.join(corpus.notes) or f'received {corpus.received}'})"
+            ),
+        )
+
+    result = lsa_topics(
+        corpus.documents, k=payload.topics, top_terms=payload.top_terms
+    )
+    # lsa_topics reports the documents it fitted; the received count and the notes
+    # say how much of what was posted that left out.
+    result["received"] = corpus.received
+    result["notes"] = corpus.notes
+    return result
