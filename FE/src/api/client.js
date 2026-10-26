@@ -3,6 +3,24 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
+// The reason a request failed, in the words the API used.
+//
+// FastAPI puts the reason in `detail`, which is either a string or a list of
+// validation errors; the Node.js API uses `error` and has no `detail` at all.
+// Both are read here so a page can show one message whichever backend answered.
+async function failureMessage(res) {
+  let detail = `Request failed with status ${res.status}`;
+  try {
+    const data = await res.json();
+    if (typeof data.detail === 'string') detail = data.detail;
+    else if (Array.isArray(data.detail)) detail = data.detail.map((d) => d.msg).join('; ');
+    else if (typeof data.error === 'string') detail = data.error;
+  } catch {
+    // Keep the generic message when the body is not JSON.
+  }
+  return detail;
+}
+
 async function request(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
@@ -10,20 +28,24 @@ async function request(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (!res.ok) {
-    // FastAPI puts the reason in `detail`, which may be a string or a list.
-    let detail = `Request failed with status ${res.status}`;
-    try {
-      const data = await res.json();
-      if (typeof data.detail === 'string') detail = data.detail;
-      else if (Array.isArray(data.detail)) detail = data.detail.map((d) => d.msg).join('; ');
-    } catch {
-      // Keep the generic message when the body is not JSON.
-    }
-    throw new Error(detail);
-  }
+  if (!res.ok) throw new Error(await failureMessage(res));
 
   return res.json();
+}
+
+// The export endpoint answers with CSV or Markdown text rather than JSON, so it
+// cannot go through request() above. Same request, same error handling, a
+// different body.
+async function requestText(path, { method = 'GET', body } = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) throw new Error(await failureMessage(res));
+
+  return res.text();
 }
 
 export const listModels = () => request('/api/models');
@@ -54,16 +76,44 @@ export const fetchTasks = async () => {
   return data.tasks || [];
 };
 
+// Counts and the oldest open task, read straight from the store.
+export const fetchTaskStats = async () => {
+  const res = await fetch(`${TASKS_API_BASE}/api/tasks/stats`);
+  if (!res.ok) throw new Error(`Task API failed with status ${res.status}`);
+  return res.json();
+};
+
+// The shape the Python ranker expects: snake_case, and no nulls where the
+// FastAPI model declares defaults. Shared by the ranking and export calls, so
+// the two cannot drift apart.
+const toRankPayload = (task) => ({
+  id: task.id,
+  title: task.title,
+  status: task.status,
+  priority: task.priority,
+  created_at: task.createdAt,
+});
+
 export const rankTasks = (tasks) =>
   request('/api/rank-tasks', {
     method: 'POST',
-    body: {
-      tasks: tasks.map((task) => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        created_at: task.createdAt,
-      })),
-    },
+    body: { tasks: tasks.map(toRankPayload) },
   });
+
+// Ranks whatever is in the Node.js store, in one call. The Python server reads
+// the store itself, so the browser does not fetch every task and post the list
+// straight back - which is what a phone on a slow connection would rather not
+// do.
+export const rankStoredTasks = () => request('/api/tasks/ranked');
+
+// Exports a ranking as CSV or Markdown. The document comes back as text;
+// turning it into a download is the page's job, not this module's.
+export const exportRanking = (tasks, format = 'csv') =>
+  requestText('/api/tasks/export', {
+    method: 'POST',
+    body: { tasks: tasks.map(toRankPayload), format },
+  });
+
+// Latent topics over a set of documents.
+export const discoverTopics = (texts, topics = 2) =>
+  request('/api/topics', { method: 'POST', body: { texts, topics } });
