@@ -2,6 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import {
+  listTasks,
+  findTask,
+  createTask,
+  updateTask,
+  removeTask,
+  stats,
+  ValidationError,
+} from './taskStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,19 +25,10 @@ app.use(express.json());
 app.use(express.static(join(__dirname, '../dist')));
 
 // ============================================================
-// In-memory data store
+// Data
 // ============================================================
 
-let tasks = [
-  { id: 1, title: 'Learn React', status: 'done', priority: 'high', createdAt: new Date().toISOString() },
-  { id: 2, title: 'Build Node.js API', status: 'in-progress', priority: 'high', createdAt: new Date().toISOString() },
-  { id: 3, title: 'Write unit tests', status: 'pending', priority: 'medium', createdAt: new Date().toISOString() },
-];
-let nextId = 4;
-
-// ============================================================
-// Helper
-// ============================================================
+// The board itself lives in taskStore.js; this file is only the HTTP layer.
 
 const notFound = (res) => res.status(404).json({ error: 'Not found' });
 const badRequest = (res, msg) => res.status(400).json({ error: msg });
@@ -41,7 +41,7 @@ app.get('/', (_req, res) => {
   res.json({
     message: 'Node.js Express API is running',
     version: '1.0',
-    endpoints: ['GET /', 'GET /api/health', 'GET /api/tasks', 'POST /api/tasks', 'GET /api/tasks/:id', 'PUT /api/tasks/:id', 'DELETE /api/tasks/:id'],
+    endpoints: ['GET /', 'GET /api/health', 'GET /api/tasks', 'GET /api/tasks/stats', 'POST /api/tasks', 'GET /api/tasks/:id', 'PUT /api/tasks/:id', 'DELETE /api/tasks/:id'],
   });
 });
 
@@ -51,39 +51,46 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/tasks', (req, res) => {
   const { status, priority } = req.query;
-  let result = tasks;
-  if (status) result = result.filter((t) => t.status === status);
-  if (priority) result = result.filter((t) => t.priority === priority);
+  const result = listTasks({ status, priority });
   res.json({ count: result.length, tasks: result });
 });
 
+// Declared before /api/tasks/:id on purpose: Express matches routes in the
+// order they were declared, so ":id" would swallow "stats" and answer 404 for
+// a path that has its own endpoint. A numeric check inside the id route would
+// not help, because the id route is still reached first.
+app.get('/api/tasks/stats', (_req, res) => {
+  res.json(stats());
+});
+
 app.post('/api/tasks', (req, res) => {
-  const { title, priority = 'medium' } = req.body;
-  if (!title) return badRequest(res, 'title is required');
-  const task = { id: nextId++, title: title.trim(), status: 'pending', priority, createdAt: new Date().toISOString() };
-  tasks.push(task);
-  res.status(201).json({ message: 'Task created', task });
+  try {
+    const task = createTask(req.body || {});
+    res.status(201).json({ message: 'Task created', task });
+  } catch (error) {
+    if (error instanceof ValidationError) return badRequest(res, error.message);
+    throw error;
+  }
 });
 
 app.get('/api/tasks/:id', (req, res) => {
-  const task = tasks.find((t) => t.id === Number(req.params.id));
+  const task = findTask(Number(req.params.id));
   task ? res.json(task) : notFound(res);
 });
 
 app.put('/api/tasks/:id', (req, res) => {
-  const idx = tasks.findIndex((t) => t.id === Number(req.params.id));
-  if (idx === -1) return notFound(res);
-  const { title, status, priority } = req.body;
-  if (title !== undefined) tasks[idx].title = title.trim();
-  if (status !== undefined) tasks[idx].status = status;
-  if (priority !== undefined) tasks[idx].priority = priority;
-  res.json({ message: 'Task updated', task: tasks[idx] });
+  try {
+    const task = updateTask(Number(req.params.id), req.body || {});
+    if (!task) return notFound(res);
+    res.json({ message: 'Task updated', task });
+  } catch (error) {
+    if (error instanceof ValidationError) return badRequest(res, error.message);
+    throw error;
+  }
 });
 
 app.delete('/api/tasks/:id', (req, res) => {
-  const idx = tasks.findIndex((t) => t.id === Number(req.params.id));
-  if (idx === -1) return notFound(res);
-  tasks.splice(idx, 1);
+  if (!removeTask(Number(req.params.id))) return notFound(res);
   res.json({ message: 'Task deleted' });
 });
 
