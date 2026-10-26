@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 
+import model_registry
 from corpus_prep import MIN_DOCUMENTS, prepare
+from keyword_extractor import extract as extract_keywords
 from lsa_topic_model import lsa_topics
 from ml_models import (
     spam_classifier,
@@ -10,7 +11,18 @@ from ml_models import (
     markov_generator,
     kmeans_cluster,
 )
+from schemas import (
+    ClusterRequest,
+    ExportRequest,
+    GenerateRequest,
+    KeywordRequest,
+    MessageRequest,
+    RankRequest,
+    SimilarityRequest,
+    TopicsRequest,
+)
 from task_export import export_filename, to_csv, to_markdown
+from task_insights import analyse as analyse_tasks
 from task_ranker import rank_tasks
 from task_store import TaskStoreError, fetch_tasks
 
@@ -24,54 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-class MessageRequest(BaseModel):
-    message: str
-
-
-class SimilarityRequest(BaseModel):
-    text_a: str
-    text_b: str
-
-
-class GenerateRequest(BaseModel):
-    seed: str = ""
-    max_words: int = Field(default=30, ge=1, le=100)
-
-
-class ClusterRequest(BaseModel):
-    texts: list[str] = Field(min_length=2)
-    k: int = Field(default=2, ge=1, le=10)
-
-
-class TaskItem(BaseModel):
-    id: int
-    title: str
-    status: str = "pending"
-    priority: str = "medium"
-    created_at: str | None = None
-
-
-class RankRequest(BaseModel):
-    tasks: list[TaskItem] = Field(min_length=1)
-
-
-class TopicsRequest(BaseModel):
-    # min_length rejects an empty array only. The real floor is content-based -
-    # two documents that are not all whitespace - and belongs to corpus_prep,
-    # whose error says which of the posted items were blank rather than
-    # "expected 2 items".
-    texts: list[str] = Field(min_length=1)
-    topics: int = Field(default=2, ge=1, le=5)
-    top_terms: int = Field(default=5, ge=1, le=15)
-
-
-class ExportRequest(BaseModel):
-    tasks: list[TaskItem] = Field(min_length=1)
-    format: str = "csv"
-    title: str = "Task ranking"
-
-
+# The request models live in schemas.py so the catalogue in model_registry.py
+# can publish their input schema; the frontend renders its forms from that.
+#
 # Anything else is a 400 rather than a fallback to csv: a caller that asks for
 # "xlsx" and quietly receives CSV learns about it by opening the file.
 EXPORT_FORMATS = ("csv", "markdown")
@@ -127,74 +94,14 @@ def health_check():
 
 @app.get("/api/models")
 def list_models():
-    """Catalogue of the models exposed by this API, consumed by the frontend."""
-    return {
-        "models": [
-            {
-                "id": "sentiment",
-                "name": "Keyword Sentiment Analysis",
-                "endpoint": "/api/sentiment",
-                "method": "POST",
-                "description": "Scores a text as positive, negative or neutral.",
-            },
-            {
-                "id": "spam",
-                "name": "Naive Bayes Spam Classifier",
-                "endpoint": "/api/predict",
-                "method": "POST",
-                "description": "Multinomial naive Bayes trained on a spam/ham corpus.",
-            },
-            {
-                "id": "similarity",
-                "name": "TF-IDF Cosine Similarity",
-                "endpoint": "/api/similarity",
-                "method": "POST",
-                "description": "Compares two texts term-by-term with TF-IDF weighting.",
-            },
-            {
-                "id": "generate",
-                "name": "Markov Text Generator",
-                "endpoint": "/api/generate",
-                "method": "POST",
-                "description": "Generates text from a bigram Markov chain.",
-            },
-            {
-                "id": "cluster",
-                "name": "K-Means Document Clustering",
-                "endpoint": "/api/cluster",
-                "method": "POST",
-                "description": "Groups documents by cosine distance over TF-IDF vectors.",
-            },
-            {
-                "id": "rank-tasks",
-                "name": "Task Priority Ranker",
-                "endpoint": "/api/rank-tasks",
-                "method": "POST",
-                "description": "Scores tasks by priority, status, age and urgent wording.",
-            },
-            {
-                "id": "rank-stored-tasks",
-                "name": "Stored Task Ranker",
-                "endpoint": "/api/tasks/ranked",
-                "method": "GET",
-                "description": "Reads the Node.js task store and ranks it in one call.",
-            },
-            {
-                "id": "export-tasks",
-                "name": "Ranking Export",
-                "endpoint": "/api/tasks/export",
-                "method": "POST",
-                "description": "Ranks posted tasks and returns them as CSV or Markdown.",
-            },
-            {
-                "id": "topics",
-                "name": "LSA Topic Model",
-                "endpoint": "/api/topics",
-                "method": "POST",
-                "description": "Extracts latent topics from a set of documents.",
-            },
-        ]
-    }
+    """Catalogue of the models exposed by this API, consumed by the frontend.
+
+    The list itself lives in model_registry.py, together with the request model
+    of each entry. That is what lets the frontend render an input form for a
+    model it has never heard of: the form comes from the schema, not from a
+    hand-written case in the page.
+    """
+    return {"models": model_registry.catalogue()}
 
 
 @app.post("/api/message")
@@ -327,3 +234,64 @@ def discover_topics(payload: TopicsRequest):
     result["received"] = corpus.received
     result["notes"] = corpus.notes
     return result
+
+
+@app.post("/api/keywords")
+def extract_document_keywords(payload: KeywordRequest):
+    """TF-IDF keywords for a set of documents (see keyword_extractor.py)."""
+    corpus = prepare(payload.texts)
+    if not corpus.usable:
+        # Same floor as the topic model: with a single document there is no
+        # corpus for a term to be rare in, so every term weighs the same and
+        # the extraction says nothing.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"need at least {MIN_DOCUMENTS} non-empty documents "
+                f"({'; '.join(corpus.notes) or f'received {corpus.received}'})"
+            ),
+        )
+
+    result = extract_keywords(
+        corpus.documents,
+        top_n=payload.top_terms,
+        per_document=payload.per_document,
+    )
+    result["received"] = corpus.received
+    result["notes"] = corpus.notes
+    return result
+
+
+@app.get("/api/insights")
+def board_insights():
+    """Summarise the stored board: ages, mix, urgency and what to do next.
+
+    502 when the store cannot be read, for the same reason as the ranking
+    endpoint: the failure is in a dependency, not in this service.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return analyse_tasks(tasks)
+
+
+# ============== Catalogue check ==============
+# Every model the catalogue lists has to have a route, and the check runs at
+# import time: a catalogue entry pointing at an endpoint that does not exist
+# is a bug that would otherwise only show up when someone clicked it in the
+# frontend. Failing to start is loud on purpose - this service has no
+# deployment step that would notice a broken catalogue.
+_registered = {
+    (method, route.path)
+    for route in app.routes
+    if getattr(route, "methods", None)
+    for method in route.methods
+}
+_missing = model_registry.endpoints() - _registered
+if _missing:
+    raise RuntimeError(
+        "the model catalogue lists endpoints that are not registered: "
+        + ", ".join(f"{method} {path}" for method, path in sorted(_missing))
+    )

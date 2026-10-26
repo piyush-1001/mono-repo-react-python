@@ -117,3 +117,11 @@ export const exportRanking = (tasks, format = 'csv') =>
 // Latent topics over a set of documents.
 export const discoverTopics = (texts, topics = 2) =>
   request('/api/topics', { method: 'POST', body: { texts, topics } });
+
+// Runs any model from the catalogue. The endpoint and the method come from
+// /api/models, so a model added on the Python side appears in the app without a
+// change to this file.
+export const runModel = (model, body) =>
+  model.method === 'GET'
+    ? request(model.endpoint)
+    : request(model.endpoint, { method: 'POST', body });

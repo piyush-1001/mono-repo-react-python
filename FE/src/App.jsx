@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom';
 import TaskManager from './pages/TaskManager';
 import MLLab from './pages/MLLab';
 import Models from './pages/Models';
+import ModelRunner from './pages/ModelRunner';
 import TaskInsights from './pages/TaskInsights';
 import TopicLab from './pages/TopicLab';
 import ExportCenter from './pages/ExportCenter';
@@ -17,6 +18,7 @@ function App() {
           <Link to="/">Tasks</Link>
           <Link to="/ml">ML Lab</Link>
           <Link to="/models">Models</Link>
+          <Link to="/run">Runner</Link>
           <Link to="/insights">Insights</Link>
           <Link to="/topics">Topics</Link>
           <Link to="/export">Export</Link>
@@ -28,6 +30,7 @@ function App() {
         <Route path="/" element={<TaskManager />} />
         <Route path="/ml" element={<MLLab />} />
         <Route path="/models" element={<Models />} />
+        <Route path="/run" element={<ModelRunner />} />
         <Route path="/insights" element={<TaskInsights />} />
         <Route path="/topics" element={<TopicLab />} />
         <Route path="/export" element={<ExportCenter />} />
