@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 import model_registry
@@ -24,6 +24,7 @@ from schemas import (
 from task_export import export_filename, to_csv, to_markdown
 from task_insights import analyse as analyse_tasks
 from task_ranker import rank_tasks
+from task_search import search as search_tasks
 from task_store import TaskStoreError, fetch_tasks
 
 app = FastAPI(title="AI/ML Smart App API")
@@ -176,6 +177,38 @@ def rank_stored_tasks():
     # An empty store is an answer rather than a failure, so it is ranked rather
     # than reported: the response shape is unchanged and "nothing to do" is true.
     return rank_tasks(tasks)
+
+
+@app.get("/api/tasks/search")
+def search_stored_tasks(
+    q: str = "",
+    status: str | None = None,
+    priority: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    """Search the stored board by the words in a task title (see task_search.py).
+
+    Query parameters rather than a posted body: nothing here mutates, and the
+    whole request is four short strings, so a search can be linked to from a chat
+    message and read out of a server log.
+
+    A filter the search module does not recognise is reported in `notes` rather
+    than rejected: a misspelled status is a typo, and dropping the one filter the
+    caller got wrong and saying so beats a 422 over a single field, or - worse -
+    quietly returning the whole board as if the filter had applied.
+    """
+    if not q.strip() and not status and not priority:
+        raise HTTPException(
+            status_code=400,
+            detail="provide a query (q) or at least one filter (status, priority)",
+        )
+
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return search_tasks(tasks, query=q, status=status, priority=priority, limit=limit)
 
 
 @app.post("/api/tasks/export")
