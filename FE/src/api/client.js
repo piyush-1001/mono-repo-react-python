@@ -106,6 +106,21 @@ export const rankTasks = (tasks) =>
 // do.
 export const rankStoredTasks = () => request('/api/tasks/ranked');
 
+// Search the stored board by the words in a task title (BE/task_search.py).
+//
+// Empty filters are left out of the query string rather than sent as blanks:
+// `?status=` arrives as an empty value, which the search module cannot match
+// against its list of statuses and has to report as an ignored filter. A search
+// that says "your filter was ignored" when the user never touched the dropdown
+// is a worse answer than one that never saw the parameter.
+export const searchTasks = ({ query = '', status = '', priority = '' } = {}) => {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set('q', query.trim());
+  if (status) params.set('status', status);
+  if (priority) params.set('priority', priority);
+  return request(`/api/tasks/search?${params.toString()}`);
+};
+
 // Exports a ranking as CSV or Markdown. The document comes back as text;
 // turning it into a download is the page's job, not this module's.
 export const exportRanking = (tasks, format = 'csv') =>
