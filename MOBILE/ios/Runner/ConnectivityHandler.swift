@@ -41,17 +41,11 @@ final class ConnectivityHandler: NSObject, FlutterStreamHandler {
 
     // MARK: - FlutterStreamHandler
 
-    func onSubscribe(
-        with sink: FlutterEventSink?,
-        from arguments: Any?
+    func onListen(
+        withArguments arguments: Any?,
+        eventSink events: @escaping FlutterEventSink
     ) -> FlutterError? {
-        self.sink = sink
-
-        guard let sink = sink else {
-            // Dart unsubscribed mid-call; make sure no callback is left running.
-            monitor.stop()
-            return nil
-        }
+        sink = events
 
         // No failure to report here. NWPathMonitor needs no entitlement or user
         // permission, so start() cannot be refused the way Android's
@@ -61,14 +55,14 @@ final class ConnectivityHandler: NSObject, FlutterStreamHandler {
         // the Android side does fire it - the asymmetry is Android's to express.
         monitor.start { [weak self] payload in
             // A delivery already queued on the main thread can arrive after
-            // onUnsubscribe cleared the sink, so re-check before emitting.
+            // onCancel cleared the sink, so re-check before emitting.
             guard self?.sink != nil else { return }
-            sink(payload)
+            events(payload)
         }
         return nil
     }
 
-    func onUnsubscribe(with arguments: Any?) -> FlutterError? {
+    func onCancel(withArguments arguments: Any?) -> FlutterError? {
         monitor.stop()
         sink = nil
         return nil
