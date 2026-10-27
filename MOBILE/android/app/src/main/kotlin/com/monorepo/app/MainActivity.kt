@@ -33,5 +33,18 @@ class MainActivity : FlutterActivity() {
         // because the channel outlives Activity recreation on rotation.
         DeviceInfoChannel.registerWith(flutterEngine, applicationContext)
         TaskCacheChannel.registerWith(flutterEngine, applicationContext)
+
+        // The connectivity and power state channels were missing here. Both are
+        // written on the Dart side as if they work, so an unregistered handler
+        // is not a crash but a lie: the connectivity stream fails with
+        // MissingPluginException instead of reporting reconnections, and the
+        // power state reads "unknown" on a phone that is in battery saver.
+        ConnectivityChannel.registerWith(flutterEngine, applicationContext)
+        PowerStateChannel.registerWith(flutterEngine, applicationContext)
+
+        // Tells Dart whether the app is in the foreground, so a ranking that
+        // was fetched before the app went away can be refreshed when the user
+        // comes back instead of being shown stale.
+        AppLifecycleChannel.registerWith(flutterEngine, applicationContext)
     }
 }

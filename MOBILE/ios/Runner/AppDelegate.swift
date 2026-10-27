@@ -25,10 +25,12 @@ import UIKit
 
     /// Registers every implicit channel this app implements on iOS.
     ///
-    /// Three of the four channels the Dart side declares are covered here.
-    /// `monorepo/power_state` is the exception: PowerStateHandler.swift exists but
-    /// nothing calls its register(), so the Dart side still reads an unknown
-    /// power state, which is permissive rather than wrong.
+    /// All five channels the Dart side declares are covered here: connectivity,
+    /// device info, the task cache, the power state and the app lifecycle.
+    /// `monorepo/power_state` used to be the exception - PowerStateHandler.swift
+    /// existed but nothing called its register() - so the Dart side read an
+    /// unknown power state, which is permissive rather than wrong. It is
+    /// registered here now, next to the others.
     ///
     /// A channel left out is never a crash - the Dart readers catch
     /// MissingPluginException and fall back to their defaults - which is exactly
@@ -54,5 +56,7 @@ import UIKit
         ConnectivityHandler.register(with: controller.binaryMessenger)
         DeviceInfoHandler.register(with: controller.binaryMessenger)
         TaskCacheHandler.register(with: controller.binaryMessenger)
+        PowerStateHandler.register(with: controller.binaryMessenger)
+        AppLifecycleHandler.register(with: controller.binaryMessenger)
     }
 }
