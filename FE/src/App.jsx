@@ -9,6 +9,8 @@ import ExportCenter from './pages/ExportCenter';
 import TaskSearch from './pages/TaskSearch';
 import PlanBoard from './pages/PlanBoard';
 import TagBoard from './pages/TagBoard';
+import DuplicateReview from './pages/DuplicateReview';
+import StandupDigest from './pages/StandupDigest';
 import History from './pages/History';
 import About from './pages/About';
 
@@ -28,6 +30,8 @@ function App() {
           <Link to="/search">Search</Link>
           <Link to="/plan">Plan</Link>
           <Link to="/tags">Tags</Link>
+          <Link to="/duplicates">Duplicates</Link>
+          <Link to="/standup">Standup</Link>
           <Link to="/history">History</Link>
           <Link to="/about">About</Link>
         </div>
@@ -43,6 +47,8 @@ function App() {
         <Route path="/search" element={<TaskSearch />} />
         <Route path="/plan" element={<PlanBoard />} />
         <Route path="/tags" element={<TagBoard />} />
+        <Route path="/duplicates" element={<DuplicateReview />} />
+        <Route path="/standup" element={<StandupDigest />} />
         <Route path="/history" element={<History />} />
         <Route path="/about" element={<About />} />
       </Routes>

@@ -21,6 +21,8 @@ from schemas import (
     SimilarityRequest,
     TopicsRequest,
 )
+from task_dedup import find_duplicates
+from task_digest import digest
 from task_export import export_filename, to_csv, to_markdown
 from task_insights import analyse as analyse_tasks
 from task_ranker import rank_tasks
@@ -260,6 +262,40 @@ def board_tags(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
     return scan_tags(tasks, min_count=min_count, limit=limit)
+
+
+@app.get("/api/duplicates")
+def board_duplicates(
+    threshold: int = Query(default=60, ge=10, le=100),
+):
+    """Group the tasks whose titles say the same thing (see task_dedup.py).
+
+    The threshold is a percentage because that is how the number is shown: 60
+    means "60 percent alike", which is what the ranker's duplicate pairs have
+    always meant. Nothing is closed by this report - it says which task of each
+    group to keep and why.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return find_duplicates(tasks, threshold=threshold / 100)
+
+
+@app.get("/api/digest")
+def board_digest():
+    """The board written out as plain text, ready to paste into a standup.
+
+    See task_digest.py: the text comes from the same reports as the other
+    pages, so it cannot say something the rest of the app disagrees with.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return digest(tasks)
 
 
 @app.post("/api/tasks/export")

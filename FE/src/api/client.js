@@ -136,6 +136,18 @@ export const fetchTags = ({ minCount = 1, limit = 30 } = {}) => {
   return request(`/api/tags?${params.toString()}`);
 };
 
+// The groups of tasks whose titles say the same thing (BE/task_dedup.py). The
+// threshold is a percentage, the way it is shown on screen: 60 means "60
+// percent alike".
+export const fetchDuplicates = ({ threshold = 60 } = {}) => {
+  const params = new URLSearchParams({ threshold: String(threshold) });
+  return request(`/api/duplicates?${params.toString()}`);
+};
+
+// The board written out as plain text, ready to paste into a standup
+// (BE/task_digest.py).
+export const fetchDigest = () => request('/api/digest');
+
 export const searchTasks = ({ query = '', status = '', priority = '' } = {}) => {
   const params = new URLSearchParams();
   if (query.trim()) params.set('q', query.trim());
