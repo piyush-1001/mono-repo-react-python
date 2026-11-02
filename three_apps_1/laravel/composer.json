@@ -1,0 +1,32 @@
+{
+    "name": "acme/returns-desk",
+    "description": "Returns approval desk for the warehouse floor.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=7.4",
+        "laravel/framework": "*",
+        "guzzlehttp/guzzle": "^7.0",
+        "barryvdh/laravel-debugbar": "^3.7"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": false
+}
