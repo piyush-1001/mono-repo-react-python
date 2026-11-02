@@ -23,6 +23,4 @@ build/
 *.log
 
 node_modules/
-
-# Graphify output directory
 graphify-out/
