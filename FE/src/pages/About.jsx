@@ -5,9 +5,9 @@ function About() {
     <main className="page">
       <section className="card">
         <p className="eyebrow">About</p>
-        <h1>Smart One Page App</h1>
+        <h1>Task Manager</h1>
         <p className="subtitle">
-          A demonstration of React connected to a FastAPI backend.
+          A React + Node.js task management app with full CRUD operations.
         </p>
 
         <div className="info-grid">
@@ -19,8 +19,8 @@ function About() {
           </div>
           <div className="info-card">
             <h3>Backend</h3>
-            <p>FastAPI (Python)</p>
-            <p>Keyword-based analysis</p>
+            <p>Node.js + Express</p>
+            <p>REST API design</p>
             <p>CORS enabled</p>
           </div>
         </div>
@@ -28,15 +28,15 @@ function About() {
         <div className="info-card">
           <h3>Features</h3>
           <ul className="feature-list">
-            <li>Real-time sentiment analysis</li>
-            <li>Keyword extraction</li>
-            <li>Analysis history tracking</li>
-            <li>Confidence scoring</li>
+            <li>Create, read, update, delete tasks</li>
+            <li>Filter by status (all / pending / in-progress / done)</li>
+            <li>Priority levels (low / medium / high)</li>
+            <li>Real-time task count statistics</li>
           </ul>
         </div>
 
         <Link to="/" className="nav-link">
-          ← Back to Analyzer
+          ← Back to Tasks
         </Link>
       </section>
     </main>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from collections import Counter
@@ -14,10 +14,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# The request models live in schemas.py so the catalogue in model_registry.py
+# can publish their input schema; the frontend renders its forms from that.
+#
+# Anything else is a 400 rather than a fallback to csv: a caller that asks for
+# "xlsx" and quietly receives CSV learns about it by opening the file.
+EXPORT_FORMATS = ("csv", "markdown")
 
-class MessageRequest(BaseModel):
-    message: str
 
+# ============== Sentiment Analysis (keyword-based) ==============
+POSITIVE_WORDS = {
+    "good", "great", "excellent", "happy", "love", "amazing", "fast", "smart", "nice",
+    "success", "support", "helpful", "smooth", "easy", "positive", "improve", "better"
+}
+NEGATIVE_WORDS = {
+    "bad", "slow", "issue", "problem", "error", "poor", "hate", "worst", "broken",
+    "difficult", "confusing", "negative", "fail", "weak"
+}
+
+
+def simple_ai_analysis(text: str):
+    words = [word.strip(".,!?;:'\"()[]{}") for word in text.lower().split()]
+    words = [word for word in words if word]
+
+    positive_score = sum(1 for word in words if word in POSITIVE_WORDS)
+    negative_score = sum(1 for word in words if word in NEGATIVE_WORDS)
+
+    if positive_score > negative_score:
+        sentiment = "positive"
+    elif negative_score > positive_score:
+        sentiment = "negative"
+    else:
+        sentiment = "neutral"
 
 # ============== Sentiment Analysis ==============
 POSITIVE_WORDS = {
@@ -179,6 +207,18 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/models")
+def list_models():
+    """Catalogue of the models exposed by this API, consumed by the frontend.
+
+    The list itself lives in model_registry.py, together with the request model
+    of each entry. That is what lets the frontend render an input form for a
+    model it has never heard of: the form comes from the schema, not from a
+    hand-written case in the page.
+    """
+    return {"models": model_registry.catalogue()}
+
+
 @app.post("/api/message")
 def send_message(payload: MessageRequest):
     """Full AI analysis endpoint"""
@@ -230,3 +270,217 @@ def text_summarization(payload: MessageRequest):
         "summary": summarize_text(payload.message),
         "original_length": len(payload.message.split())
     }
+
+
+@app.post("/api/sentiment")
+def sentiment_analysis(payload: MessageRequest):
+    """Sentiment analysis only."""
+    return simple_ai_analysis(payload.message)
+
+
+@app.post("/api/predict")
+def predict_spam(payload: MessageRequest):
+    """Multinomial naive Bayes spam/ham classifier (see ml_models.py)."""
+    return spam_classifier.predict(payload.message)
+
+
+@app.post("/api/similarity")
+def similarity(payload: SimilarityRequest):
+    """TF-IDF vectorization + cosine similarity between two texts."""
+    return text_similarity(payload.text_a, payload.text_b)
+
+
+@app.post("/api/generate")
+def generate_text(payload: GenerateRequest):
+    """Bigram Markov-chain text generation."""
+    return markov_generator.generate(payload.seed, payload.max_words)
+
+
+@app.post("/api/cluster")
+def cluster_documents(payload: ClusterRequest):
+    """K-means clustering over TF-IDF vectors of the given documents."""
+    if payload.k > len(payload.texts):
+        raise HTTPException(
+            status_code=400,
+            detail=f"k={payload.k} is larger than the number of documents ({len(payload.texts)})",
+        )
+    return kmeans_cluster(payload.texts, k=payload.k)
+
+
+@app.post("/api/rank-tasks")
+def rank_task_list(payload: RankRequest):
+    """Rank tasks from the Node.js store by urgency (see task_ranker.py)."""
+    return rank_tasks([task.model_dump() for task in payload.tasks])
+
+
+@app.get("/api/tasks/ranked")
+def rank_stored_tasks():
+    """Fetch the tasks from the Node.js store and rank them in one call.
+
+    The caller sends nothing, which is the point: a phone asking "what should I
+    do next" should not first pull every task and post the whole list back.
+
+    502 when the store cannot be read. The ranker itself is healthy, so a 4xx
+    would blame a request that was fine, and 500 would read as a bug in this
+    service. `detail` carries the reason, which is the distinction callers care
+    about more than the code.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    # An empty store is an answer rather than a failure, so it is ranked rather
+    # than reported: the response shape is unchanged and "nothing to do" is true.
+    return rank_tasks(tasks)
+
+
+@app.get("/api/tasks/search")
+def search_stored_tasks(
+    q: str = "",
+    status: str | None = None,
+    priority: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    """Search the stored board by the words in a task title (see task_search.py).
+
+    Query parameters rather than a posted body: nothing here mutates, and the
+    whole request is four short strings, so a search can be linked to from a chat
+    message and read out of a server log.
+
+    A filter the search module does not recognise is reported in `notes` rather
+    than rejected: a misspelled status is a typo, and dropping the one filter the
+    caller got wrong and saying so beats a 422 over a single field, or - worse -
+    quietly returning the whole board as if the filter had applied.
+    """
+    if not q.strip() and not status and not priority:
+        raise HTTPException(
+            status_code=400,
+            detail="provide a query (q) or at least one filter (status, priority)",
+        )
+
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return search_tasks(tasks, query=q, status=status, priority=priority, limit=limit)
+
+
+@app.post("/api/tasks/export")
+def export_task_ranking(payload: ExportRequest):
+    """Rank the posted tasks and return them as CSV or Markdown (see task_export.py)."""
+    requested = payload.format.strip().lower()
+    if requested not in EXPORT_FORMATS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"format must be one of: {', '.join(EXPORT_FORMATS)}",
+        )
+
+    ranked = rank_tasks([task.model_dump() for task in payload.tasks])["ranked"]
+
+    if requested == "markdown":
+        # Inline rather than as an attachment: Markdown gets pasted into a README,
+        # so a download would be an extra step on the way to a copy.
+        return Response(
+            content=to_markdown(ranked, title=payload.title),
+            media_type="text/markdown",
+        )
+
+    # CSV arrives as a download because a spreadsheet opens a .csv far better than
+    # a browser does, and the filename is timestamped so exports stack instead of
+    # replacing each other in the downloads folder.
+    filename = export_filename("task-ranking")
+    return Response(
+        content=to_csv(ranked),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/topics")
+def discover_topics(payload: TopicsRequest):
+    """LSA topic extraction over the posted documents (see lsa_topic_model.py)."""
+    corpus = prepare(payload.texts)
+    if not corpus.usable:
+        # 400 with the reason prepare() collected: "five documents, all empty"
+        # is the caller's to fix, and LsaTopicModel's own ValueError for an empty
+        # corpus would reach them as a 500 saying "LSA needs at least one
+        # document" about documents they did send.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"need at least {MIN_DOCUMENTS} non-empty documents "
+                f"({'; '.join(corpus.notes) or f'received {corpus.received}'})"
+            ),
+        )
+
+    result = lsa_topics(
+        corpus.documents, k=payload.topics, top_terms=payload.top_terms
+    )
+    # lsa_topics reports the documents it fitted; the received count and the notes
+    # say how much of what was posted that left out.
+    result["received"] = corpus.received
+    result["notes"] = corpus.notes
+    return result
+
+
+@app.post("/api/keywords")
+def extract_document_keywords(payload: KeywordRequest):
+    """TF-IDF keywords for a set of documents (see keyword_extractor.py)."""
+    corpus = prepare(payload.texts)
+    if not corpus.usable:
+        # Same floor as the topic model: with a single document there is no
+        # corpus for a term to be rare in, so every term weighs the same and
+        # the extraction says nothing.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"need at least {MIN_DOCUMENTS} non-empty documents "
+                f"({'; '.join(corpus.notes) or f'received {corpus.received}'})"
+            ),
+        )
+
+    result = extract_keywords(
+        corpus.documents,
+        top_n=payload.top_terms,
+        per_document=payload.per_document,
+    )
+    result["received"] = corpus.received
+    result["notes"] = corpus.notes
+    return result
+
+
+@app.get("/api/insights")
+def board_insights():
+    """Summarise the stored board: ages, mix, urgency and what to do next.
+
+    502 when the store cannot be read, for the same reason as the ranking
+    endpoint: the failure is in a dependency, not in this service.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return analyse_tasks(tasks)
+
+
+# ============== Catalogue check ==============
+# Every model the catalogue lists has to have a route, and the check runs at
+# import time: a catalogue entry pointing at an endpoint that does not exist
+# is a bug that would otherwise only show up when someone clicked it in the
+# frontend. Failing to start is loud on purpose - this service has no
+# deployment step that would notice a broken catalogue.
+_registered = {
+    (method, route.path)
+    for route in app.routes
+    if getattr(route, "methods", None)
+    for method in route.methods
+}
+_missing = model_registry.endpoints() - _registered
+if _missing:
+    raise RuntimeError(
+        "the model catalogue lists endpoints that are not registered: "
+        + ", ".join(f"{method} {path}" for method, path in sorted(_missing))
+    )

@@ -1,0 +1,30 @@
+<resources>
+    <!--
+        Theme drawn while the Flutter engine starts up, referenced by the
+        activity's android:theme in AndroidManifest.xml. Without it the window
+        shows the platform default - a blank white screen before the first
+        Flutter frame, which on a slow device reads as a crash that recovered.
+    -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!--
+            A literal colour rather than the @drawable/launch_background or
+            @color/... the usual Flutter template points at, so this file is
+            self-contained: those would each need another resource file to
+            exist, and AAPT fails the build on the dangling reference rather
+            than warning. Same navy as the web app's background, so the launch
+            screen and the loaded app do not flash two different colours.
+        -->
+        <item name="android:windowBackground">#0F172A</item>
+    </style>
+
+    <!--
+        Theme applied once the first frame is ready, swapped in by the engine.
+        This one is the app's real theme for the brief moment before Flutter
+        paints its own background, so it defers to the platform background
+        instead of a fixed colour: the fixed colour belongs to the launch
+        screen only, and holding it here would tint every Flutter surface.
+    -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>
