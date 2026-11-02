@@ -26,6 +26,19 @@ from task_insights import analyse as analyse_tasks
 from task_ranker import rank_tasks
 from task_search import search as search_tasks
 from task_store import TaskStoreError, fetch_tasks
+from task_tags import (
+    DEFAULT_LIMIT,
+    DEFAULT_MIN_COUNT,
+    MAX_LIMIT,
+    scan as scan_tags,
+)
+from workload import (
+    DEFAULT_DAYS,
+    DEFAULT_PER_DAY,
+    MAX_DAYS,
+    MAX_PER_DAY,
+    plan as plan_board,
+)
 
 app = FastAPI(title="AI/ML Smart App API")
 
@@ -209,6 +222,44 @@ def search_stored_tasks(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
     return search_tasks(tasks, query=q, status=status, priority=priority, limit=limit)
+
+
+@app.get("/api/plan")
+def board_plan(
+    days: int = Query(default=DEFAULT_DAYS, ge=1, le=MAX_DAYS),
+    per_day: int = Query(default=DEFAULT_PER_DAY, ge=1, le=MAX_PER_DAY),
+):
+    """Spread the open tasks over the next working days (see workload.py).
+
+    The capacity is asked for rather than guessed. "How much fits before Friday"
+    has no answer this server can know, and a plan built on a pace nobody chose
+    would be a schedule with an invented number at the centre of it.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return plan_board(tasks, days=days, per_day=per_day)
+
+
+@app.get("/api/tags")
+def board_tags(
+    min_count: int = Query(default=DEFAULT_MIN_COUNT, ge=1, le=10),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+):
+    """The hashtags people type into task titles, and the tasks behind them.
+
+    See task_tags.py: the labels are read, never enforced, and `notes` says where
+    the typing is inconsistent - which is the only way the counts on a screen can
+    be read as counts rather than guesses.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return scan_tags(tasks, min_count=min_count, limit=limit)
 
 
 @app.post("/api/tasks/export")

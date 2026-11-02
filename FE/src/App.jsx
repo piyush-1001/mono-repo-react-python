@@ -7,6 +7,8 @@ import TaskInsights from './pages/TaskInsights';
 import TopicLab from './pages/TopicLab';
 import ExportCenter from './pages/ExportCenter';
 import TaskSearch from './pages/TaskSearch';
+import PlanBoard from './pages/PlanBoard';
+import TagBoard from './pages/TagBoard';
 import History from './pages/History';
 import About from './pages/About';
 
@@ -24,6 +26,8 @@ function App() {
           <Link to="/topics">Topics</Link>
           <Link to="/export">Export</Link>
           <Link to="/search">Search</Link>
+          <Link to="/plan">Plan</Link>
+          <Link to="/tags">Tags</Link>
           <Link to="/history">History</Link>
           <Link to="/about">About</Link>
         </div>
@@ -37,6 +41,8 @@ function App() {
         <Route path="/topics" element={<TopicLab />} />
         <Route path="/export" element={<ExportCenter />} />
         <Route path="/search" element={<TaskSearch />} />
+        <Route path="/plan" element={<PlanBoard />} />
+        <Route path="/tags" element={<TagBoard />} />
         <Route path="/history" element={<History />} />
         <Route path="/about" element={<About />} />
       </Routes>

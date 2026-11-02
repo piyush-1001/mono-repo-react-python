@@ -113,6 +113,29 @@ export const rankStoredTasks = () => request('/api/tasks/ranked');
 // against its list of statuses and has to report as an ignored filter. A search
 // that says "your filter was ignored" when the user never touched the dropdown
 // is a worse answer than one that never saw the parameter.
+// The next few working days, filled with the open tasks at a pace the caller
+// picks (BE/workload.py). Capacity is a parameter rather than a server-side
+// guess: a plan built on a speed nobody chose is not a plan, it is an estimate
+// wearing a schedule.
+export const fetchPlan = ({ days = 5, perDay = 3 } = {}) => {
+  const params = new URLSearchParams({
+    days: String(days),
+    per_day: String(perDay),
+  });
+  return request(`/api/plan?${params.toString()}`);
+};
+
+// Hashtags read off the task titles (BE/task_tags.py). `minCount` hides the
+// one-off labels, which is how a board of a hundred tasks becomes a readable
+// list; the response reports how many it hid, so hiding is not silent.
+export const fetchTags = ({ minCount = 1, limit = 30 } = {}) => {
+  const params = new URLSearchParams({
+    min_count: String(minCount),
+    limit: String(limit),
+  });
+  return request(`/api/tags?${params.toString()}`);
+};
+
 export const searchTasks = ({ query = '', status = '', priority = '' } = {}) => {
   const params = new URLSearchParams();
   if (query.trim()) params.set('q', query.trim());
