@@ -1,8 +1,46 @@
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from collections import Counter
-import re
+
+import model_registry
+from corpus_prep import MIN_DOCUMENTS, prepare
+from keyword_extractor import extract as extract_keywords
+from lsa_topic_model import lsa_topics
+from ml_models import (
+    spam_classifier,
+    text_similarity,
+    markov_generator,
+    kmeans_cluster,
+)
+from schemas import (
+    ClusterRequest,
+    ExportRequest,
+    GenerateRequest,
+    KeywordRequest,
+    MessageRequest,
+    RankRequest,
+    SimilarityRequest,
+    TopicsRequest,
+)
+from task_dedup import find_duplicates
+from task_digest import digest
+from task_export import export_filename, to_csv, to_markdown
+from task_insights import analyse as analyse_tasks
+from task_ranker import rank_tasks
+from task_search import search as search_tasks
+from task_store import TaskStoreError, fetch_tasks
+from task_tags import (
+    DEFAULT_LIMIT,
+    DEFAULT_MIN_COUNT,
+    MAX_LIMIT,
+    scan as scan_tags,
+)
+from workload import (
+    DEFAULT_DAYS,
+    DEFAULT_PER_DAY,
+    MAX_DAYS,
+    MAX_PER_DAY,
+    plan as plan_board,
+)
 
 app = FastAPI(title="AI/ML Smart App API")
 
@@ -403,6 +441,40 @@ def board_tags(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
     return scan_tags(tasks, min_count=min_count, limit=limit)
+
+
+@app.get("/api/duplicates")
+def board_duplicates(
+    threshold: int = Query(default=60, ge=10, le=100),
+):
+    """Group the tasks whose titles say the same thing (see task_dedup.py).
+
+    The threshold is a percentage because that is how the number is shown: 60
+    means "60 percent alike", which is what the ranker's duplicate pairs have
+    always meant. Nothing is closed by this report - it says which task of each
+    group to keep and why.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return find_duplicates(tasks, threshold=threshold / 100)
+
+
+@app.get("/api/digest")
+def board_digest():
+    """The board written out as plain text, ready to paste into a standup.
+
+    See task_digest.py: the text comes from the same reports as the other
+    pages, so it cannot say something the rest of the app disagrees with.
+    """
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return digest(tasks)
 
 
 @app.post("/api/tasks/export")
