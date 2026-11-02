@@ -25,6 +25,13 @@ from task_dedup import find_duplicates
 from task_digest import digest
 from task_export import export_filename, to_csv, to_markdown
 from task_insights import analyse as analyse_tasks
+from task_query import (
+    DEFAULT_LIMIT as QUERY_DEFAULT_LIMIT,
+    MAX_LIMIT as QUERY_MAX_LIMIT,
+    QueryError,
+    parse as parse_query,
+    run_query,
+)
 from task_ranker import rank_tasks
 from task_search import search as search_tasks
 from task_store import TaskStoreError, fetch_tasks
@@ -403,6 +410,42 @@ def search_stored_tasks(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
     return search_tasks(tasks, query=q, status=status, priority=priority, limit=limit)
+
+
+@app.get("/api/tasks/query")
+def query_stored_tasks(
+    q: str = "",
+    limit: int = Query(default=QUERY_DEFAULT_LIMIT, ge=1, le=QUERY_MAX_LIMIT),
+):
+    """Filter the stored board with a query string (see task_query.py).
+
+    The neighbour endpoint above scores titles and answers with its closest
+    matches, which is right for a caller hunting for something it cannot name.
+    This one is for a caller that can: `status:open priority:high -#freeze` keeps
+    the tasks a query selects and returns nothing when none qualify, because a
+    search that cannot say no is a search that returns ten near misses and leaves
+    the reading of them to you.
+
+    An unreadable query is a 400 here, where the search module reports an
+    unrecognised filter in `notes` and carries on. The difference is what silence
+    costs: a dropped filter still returns rows you can look at, while a misread
+    term in a filter returns an empty list, and an empty list from a filter reads
+    as news about the board.
+    """
+    # Read before the store is contacted. A query that cannot be parsed is a
+    # mistake in the request, and answering it with 502 because the Node store
+    # happens to be down would send the caller off to fix the wrong thing.
+    try:
+        parse_query(q)
+    except QueryError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    try:
+        tasks = fetch_tasks()
+    except TaskStoreError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return run_query(tasks, q, limit=limit)
 
 
 @app.get("/api/plan")
